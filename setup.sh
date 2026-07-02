@@ -5,12 +5,10 @@ set -euo pipefail
 REPO_SLUG="Aaryajain101/ai-vault"
 VAULT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-command -v gh >/dev/null || { echo "GitHub CLI missing. Install: brew install gh — then re-run."; exit 1; }
-gh auth status >/dev/null 2>&1 || { echo "Not logged in. Run: gh auth login — then re-run."; exit 1; }
 PY="$(command -v python3 || command -v python)" || { echo "Python missing. Install python3 — then re-run."; exit 1; }
 
 echo "1/4 Downloading latest vault.db..."
-gh release download latest --pattern "vault.db" --clobber -R "$REPO_SLUG" --dir "$VAULT_DIR"
+curl -fsSL "https://github.com/$REPO_SLUG/releases/latest/download/vault.db" -o "$VAULT_DIR/vault.db"
 
 echo "2/4 Installing the /vault-search skill for Claude Code..."
 SKILL_DIR="$HOME/.claude/skills"
@@ -38,7 +36,7 @@ cat > "$VAULT_DIR/pull.sh" <<EOF
 #!/usr/bin/env bash
 cd "$VAULT_DIR"
 git pull --quiet || true
-gh release download latest --pattern vault.db --clobber -R $REPO_SLUG
+curl -fsSL "https://github.com/$REPO_SLUG/releases/latest/download/vault.db" -o vault.db
 EOF
 chmod +x "$VAULT_DIR/pull.sh"
 

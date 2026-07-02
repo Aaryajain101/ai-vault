@@ -10,10 +10,9 @@ A local, searchable catalog of **30,000+ AI resources** — Claude Code skills, 
 
 ## Install (2 minutes)
 
-Prereqs: [git](https://git-scm.com), [GitHub CLI](https://cli.github.com) (`winget install GitHub.cli` / `brew install gh`), Python 3.10+, and access to this repo (ask Aarya for an invite).
+Prereqs: [git](https://git-scm.com) and Python 3.10+. That's it — no GitHub account needed.
 
 ```bash
-gh auth login                                   # once
 git clone https://github.com/Aaryajain101/ai-vault
 cd ai-vault
 ```

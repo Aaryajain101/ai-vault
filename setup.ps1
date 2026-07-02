@@ -4,24 +4,12 @@ $ErrorActionPreference = "Stop"
 $RepoSlug = "Aaryajain101/ai-vault"
 $VaultDir = $PSScriptRoot
 
-function Find-Exe($name, $extraPaths) {
-    $cmd = Get-Command $name -ErrorAction SilentlyContinue
-    if ($cmd) { return $cmd.Source }
-    foreach ($p in $extraPaths) { if (Test-Path $p) { return $p } }
-    return $null
-}
-
-$gh = Find-Exe "gh" @("$env:ProgramFiles\GitHub CLI\gh.exe")
-if (-not $gh) { Write-Host "GitHub CLI missing. Install with: winget install GitHub.cli  — then re-run setup." -ForegroundColor Red; exit 1 }
-
-& $gh auth status 2>$null | Out-Null
-if ($LASTEXITCODE -ne 0) { Write-Host "Not logged in to GitHub. Run: gh auth login  — then re-run setup." -ForegroundColor Red; exit 1 }
-
-$python = Find-Exe "python" @()
+$python = (Get-Command python -ErrorAction SilentlyContinue).Source
 if (-not $python) { Write-Host "Python missing. Install from python.org, then re-run setup." -ForegroundColor Red; exit 1 }
 
 Write-Host "1/4 Downloading latest vault.db..." -ForegroundColor Cyan
-& $gh release download latest --pattern "vault.db" --clobber -R $RepoSlug --dir $VaultDir
+$dbUrl = "https://github.com/$RepoSlug/releases/latest/download/vault.db"
+Invoke-WebRequest -Uri $dbUrl -OutFile (Join-Path $VaultDir "vault.db")
 
 Write-Host "2/4 Installing the /vault-search skill for Claude Code..." -ForegroundColor Cyan
 $skillDir = Join-Path $env:USERPROFILE ".claude\skills"
@@ -50,7 +38,7 @@ $pull = @"
 @echo off
 cd /d "$VaultDir"
 git pull --quiet
-"$gh" release download latest --pattern vault.db --clobber -R $RepoSlug
+powershell -NoProfile -Command "Invoke-WebRequest -Uri 'https://github.com/$RepoSlug/releases/latest/download/vault.db' -OutFile 'vault.db'"
 "@
 [System.IO.File]::WriteAllText((Join-Path $VaultDir "pull.cmd"), $pull, (New-Object System.Text.ASCIIEncoding))
 $action   = New-ScheduledTaskAction -Execute (Join-Path $VaultDir "pull.cmd")
