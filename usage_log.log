@@ -2,3 +2,7 @@
 2026-07-02 12:42:34  SEARCH   "invoice"   -> 3 results
 2026-07-02 12:42:34  GET      skill/frontend-design
 2026-07-02 12:44:36  SEARCH   "database" --cat mcp_server   -> 2 results
+2026-07-02 14:07:44  SEARCH   "react" --cat skill --source skills.sh   -> 3 results
+2026-07-02 14:07:44  SEARCH   "browser" --source awesome-mcp   -> 2 results
+2026-07-02 14:07:44  SEARCH   "react" --cat skill --source skills.sh   -> 1 results
+2026-07-02 14:07:44  GET      skill/react-sh
