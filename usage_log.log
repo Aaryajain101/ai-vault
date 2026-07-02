@@ -1,0 +1,4 @@
+2026-07-02 12:42:33  SEARCH   "kubernetes" --cat mcp_server   -> 2 results
+2026-07-02 12:42:34  SEARCH   "invoice"   -> 3 results
+2026-07-02 12:42:34  GET      skill/frontend-design
+2026-07-02 12:44:36  SEARCH   "database" --cat mcp_server   -> 2 results
