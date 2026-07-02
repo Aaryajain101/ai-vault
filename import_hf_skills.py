@@ -78,6 +78,13 @@ def parse_owner_repo_skill(code, skill_name):
             owner, repo = m2.group(1), m2.group(2)
     sm = re.search(r"--skill\s+(\S+)", code or "")
     skill = sm.group(1) if sm else (skill_name or None)
+    # strip shell quotes that some dataset rows carry (--skill '.NET')
+    if skill:
+        skill = skill.strip("'\"")
+    if owner:
+        owner = owner.strip("'\"")
+    if repo:
+        repo = repo.strip("'\"")
     return owner, repo, skill
 
 

@@ -23,6 +23,7 @@ import urllib.parse
 import os
 import re
 import gzip
+import time
 import datetime
 
 LEVELUP_BASE = "https://www.leveluplearning.in/aivault/data/ai-resources"
@@ -41,14 +42,23 @@ SOURCE_SUFFIX = {"levelup": "lvl", "mcp-registry": "mcpreg", "openrouter": "or",
 
 
 # ---------------------------------------------------------------- HTTP helpers
-def fetch_bytes(url, timeout=60):
-    req = urllib.request.Request(
-        url, headers={"User-Agent": "Mozilla/5.0", "Accept-Encoding": "gzip"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        data = r.read()
-        if r.headers.get("Content-Encoding") == "gzip" or data[:2] == b"\x1f\x8b":
-            data = gzip.decompress(data)
-        return data
+def fetch_bytes(url, timeout=60, retries=3):
+    """GET with retries — DNS on some networks is intermittent (getaddrinfo 11001)."""
+    last = None
+    for attempt in range(retries):
+        try:
+            req = urllib.request.Request(
+                url, headers={"User-Agent": "Mozilla/5.0", "Accept-Encoding": "gzip"})
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                data = r.read()
+                if r.headers.get("Content-Encoding") == "gzip" or data[:2] == b"\x1f\x8b":
+                    data = gzip.decompress(data)
+                return data
+        except Exception as e:
+            last = e
+            if attempt < retries - 1:
+                time.sleep(4 * (attempt + 1))
+    raise last
 
 
 def fetch_json(url, timeout=60):
@@ -236,7 +246,9 @@ def fetch_skills_sh():
             print(f"  skills.sh: HF cache unreadable — {e}")
 
     def make(owner, repo, skill, desc, url):
-        return rec("skill", f"skill/{skill}", skill, desc, url,
+        # HF mirror rows sometimes carry shell quotes around the skill token.
+        owner, repo, skill = (s.strip("'\"") for s in (owner, repo, skill))
+        return rec("skill", f"skill/{slugify(skill)}", skill, desc, url,
                    f"https://github.com/{owner}/{repo}",
                    {"owner": owner, "repo": repo, "skill_name": skill,
                     "install_command": f"npx skills add https://github.com/{owner}/{repo} --skill {skill}"},
