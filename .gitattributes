@@ -1,0 +1,7 @@
+# Shell scripts must keep LF or bash on macOS/Linux breaks
+*.sh text eol=lf
+# Windows scripts keep CRLF
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+# Everything else: normalize to LF in repo
+* text=auto
