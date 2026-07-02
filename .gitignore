@@ -4,3 +4,8 @@ __pycache__/
 update_history.log
 usage_log.log
 skills_sh_hf.json
+skills_sh_hf.state
+pull.cmd
+pull.sh
+Thumbs.db
+.DS_Store

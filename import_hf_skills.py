@@ -24,16 +24,27 @@ import urllib.request
 DATASET = "tickleliu/all-skills-from-skills-sh"
 DS_BASE = "https://datasets-server.huggingface.co"
 OUT_PATH = os.path.join(os.path.dirname(__file__), "skills_sh_hf.json")
-PAGE = 100  # datasets-server max length per /rows call
+STATE_PATH = os.path.join(os.path.dirname(__file__), "skills_sh_hf.state")
+PAGE = 100        # datasets-server max length per /rows call
+PAGE_DELAY = 1.2  # polite pacing between pages (seconds)
 
 
-def fetch_json(url, timeout=60, retries=4):
+def fetch_json(url, timeout=60, retries=6):
+    """GET JSON with backoff; waits out 429s (long sleep) instead of dying."""
     last = None
     for attempt in range(retries):
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 return json.loads(r.read().decode("utf-8", "replace"))
+        except urllib.error.HTTPError as e:
+            last = e
+            if e.code == 429:
+                wait = 60 * (attempt + 1)
+                print(f"    429 rate-limited — sleeping {wait}s...")
+                time.sleep(wait)
+            else:
+                time.sleep(2 * (attempt + 1))
         except Exception as e:
             last = e
             time.sleep(2 * (attempt + 1))
@@ -86,8 +97,24 @@ def main():
         total = min(total or args.limit, args.limit)
     print(f"Importing {'up to ' + str(args.limit) if args.limit else str(total)} rows...")
 
-    out, seen = [], set()
-    offset = 0
+    # Resume support: reload prior records + last offset if present.
+    out, seen, offset = [], set(), 0
+    if os.path.exists(OUT_PATH) and os.path.exists(STATE_PATH):
+        try:
+            out = json.load(open(OUT_PATH, encoding="utf-8"))
+            seen = {(r["owner"], r["repo"], r["skill"]) for r in out}
+            offset = int(open(STATE_PATH, encoding="utf-8").read().strip())
+            print(f"Resuming from offset {offset} ({len(out)} records already saved)")
+        except Exception:
+            out, seen, offset = [], set(), 0
+
+    def save(final=False):
+        json.dump(out, open(OUT_PATH, "w", encoding="utf-8"), ensure_ascii=False)
+        if final and os.path.exists(STATE_PATH):
+            os.remove(STATE_PATH)  # complete — no resume needed
+        else:
+            open(STATE_PATH, "w", encoding="utf-8").write(str(offset))
+
     while True:
         if args.limit and offset >= args.limit:
             break
@@ -100,8 +127,9 @@ def main():
         try:
             data = fetch_json(url)
         except Exception as e:
-            print(f"  page @{offset} failed: {e} (stopping)")
-            break
+            print(f"  page @{offset} failed: {e} — progress saved, re-run to resume")
+            save()
+            return
         rows = data.get("rows", [])
         if not rows:
             break
@@ -125,8 +153,10 @@ def main():
         offset += len(rows)
         if offset % 2000 == 0 or (args.limit and offset >= args.limit):
             print(f"  {offset} rows scanned, {len(out)} skills kept")
+            save()  # checkpoint every ~2000 rows
+        time.sleep(PAGE_DELAY)
 
-    json.dump(out, open(OUT_PATH, "w", encoding="utf-8"), ensure_ascii=False)
+    save(final=True)
     print(f"Done. Wrote {len(out):,} skill records to {OUT_PATH}")
     print("Now run: python fetch.py   (to merge these descriptions into vault.db)")
 

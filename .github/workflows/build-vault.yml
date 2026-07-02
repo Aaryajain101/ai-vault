@@ -1,0 +1,53 @@
+name: Build AI Vault
+
+on:
+  schedule:
+    - cron: "30 0 * * *"   # daily 00:30 UTC (~6:00 AM IST)
+  workflow_dispatch: {}     # manual trigger
+
+permissions:
+  contents: write           # needed to create/update the release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Reuse the skills.sh HF description cache from the previous release
+      # (import_hf_skills.py is heavy/rate-limited; refresh it manually, not daily).
+      - name: Restore skills_sh_hf.json from latest release
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download latest --pattern skills_sh_hf.json --clobber || true
+
+      - name: Build vault.db from all sources
+        run: python fetch.py
+
+      - name: Sanity-check the build
+        run: |
+          python - <<'EOF'
+          import sqlite3, sys
+          con = sqlite3.connect("vault.db")
+          n = con.execute("SELECT COUNT(*) FROM items").fetchone()[0]
+          fts = con.execute("SELECT COUNT(*) FROM items_fts").fetchone()[0]
+          dups = con.execute("SELECT COUNT(*) FROM (SELECT slug FROM items GROUP BY slug HAVING COUNT(*)>1)").fetchone()[0]
+          print(f"items={n} fts={fts} dup_slugs={dups}")
+          # refuse to publish a suspicious build
+          if n < 10000 or fts != n or dups != 0:
+              sys.exit("sanity check FAILED — not publishing")
+          EOF
+
+      - name: Publish to 'latest' release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view latest >/dev/null 2>&1 || gh release create latest --title "AI Vault (auto-built)" --notes "Rolling daily build. Download vault.db and place it next to vault_search.py."
+          gh release upload latest vault.db --clobber
+          if [ -f skills_sh_hf.json ]; then gh release upload latest skills_sh_hf.json --clobber; fi
+          gh release edit latest --notes "Rolling daily build — last updated $(date -u '+%Y-%m-%d %H:%M UTC'). Download vault.db and place it next to vault_search.py."
