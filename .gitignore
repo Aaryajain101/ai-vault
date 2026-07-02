@@ -1,3 +1,6 @@
 vault.db
 update.log
 __pycache__/
+update_history.log
+usage_log.log
+skills_sh_hf.json

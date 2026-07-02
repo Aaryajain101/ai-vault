@@ -42,32 +42,30 @@ def get_db():
     return sqlite3.connect(DB_PATH)
 
 
-def search(query, category=None, limit=10):
+def search(query, category=None, limit=10, source=None):
     con = get_db()
     cur = con.cursor()
+    where = ["items_fts MATCH ?"]
+    params = [query]
     if category:
-        cur.execute(
-            """
-            SELECT i.category, i.slug, i.name, i.description, i.primary_url, i.extra
-            FROM items_fts f JOIN items i ON f.rowid = i.id
-            WHERE items_fts MATCH ? AND i.category = ?
-            ORDER BY rank LIMIT ?
-            """,
-            (query, category, limit),
-        )
-    else:
-        cur.execute(
-            """
-            SELECT i.category, i.slug, i.name, i.description, i.primary_url, i.extra
-            FROM items_fts f JOIN items i ON f.rowid = i.id
-            WHERE items_fts MATCH ?
-            ORDER BY rank LIMIT ?
-            """,
-            (query, limit),
-        )
+        where.append("i.category = ?")
+        params.append(category)
+    if source:
+        where.append("i.source = ?")
+        params.append(source)
+    params.append(limit)
+    cur.execute(
+        f"""
+        SELECT i.category, i.slug, i.name, i.description, i.primary_url, i.extra, i.source
+        FROM items_fts f JOIN items i ON f.rowid = i.id
+        WHERE {' AND '.join(where)}
+        ORDER BY rank LIMIT ?
+        """,
+        params,
+    )
     rows = cur.fetchall()
     con.close()
-    detail = f'"{query}"' + (f" --cat {category}" if category else "")
+    detail = f'"{query}"' + (f" --cat {category}" if category else "") + (f" --source {source}" if source else "")
     log_usage("SEARCH", detail, f"{len(rows)} results")
     return rows
 
@@ -87,13 +85,20 @@ def stats():
     cur.execute("SELECT category, COUNT(*) FROM items GROUP BY category ORDER BY COUNT(*) DESC")
     rows = cur.fetchall()
     total = sum(r[1] for r in rows)
+    cur.execute("SELECT source, COUNT(*) FROM items GROUP BY source ORDER BY COUNT(*) DESC")
+    src_rows = cur.fetchall()
     con.close()
     print(f"\n{'Category':<15} {'Count':>7}")
     print("-" * 24)
     for cat, count in rows:
         print(f"  {cat:<13} {count:>7,}")
     print("-" * 24)
-    print(f"  {'TOTAL':<13} {total:>7,}\n")
+    print(f"  {'TOTAL':<13} {total:>7,}")
+    print(f"\n{'Source':<15} {'Count':>7}")
+    print("-" * 24)
+    for src, count in src_rows:
+        print(f"  {(src or '?'):<13} {count:>7,}")
+    print()
 
 
 def list_collections():
@@ -114,11 +119,11 @@ def print_results(rows):
         print("No results found.")
         return
     print()
-    for cat, slug, name, desc, url, extra_json in rows:
+    for cat, slug, name, desc, url, extra_json, source in rows:
         extra = json.loads(extra_json) if extra_json else {}
         stars = extra.get("stars", "")
         stars_str = f"  ★{stars:,}" if isinstance(stars, int) and stars else ""
-        print(f"  [{cat}] {name}{stars_str}")
+        print(f"  [{cat}] {name}{stars_str}  ({source})")
         print(f"    slug: {slug}")
         if desc:
             print(f"    {desc[:100]}")
@@ -131,10 +136,10 @@ def install(slug):
         print(f"Slug not found: {slug}")
         sys.exit(1)
 
-    _, category, slug_val, name, desc, primary_url, external_url, extra_json = row
+    _, category, slug_val, name, desc, primary_url, external_url, extra_json, source = row
     extra = json.loads(extra_json) if extra_json else {}
 
-    print(f"\nInstalling: {name}  [{category}]")
+    print(f"\nInstalling: {name}  [{category}]  (source: {source})")
     print(f"  {desc[:100] if desc else ''}\n")
     log_usage("INSTALL", f"{slug_val}", f"[{category}] {name}")
 
@@ -201,12 +206,13 @@ def show_item(slug):
         log_usage("GET", slug, "not found")
         return
     log_usage("GET", slug)
-    _, category, slug_val, name, desc, primary_url, external_url, extra_json = row
+    _, category, slug_val, name, desc, primary_url, external_url, extra_json, source = row
     extra = json.loads(extra_json) if extra_json else {}
     print(f"\n{'='*50}")
     print(f"  {name}  [{category}]")
     print(f"{'='*50}")
     print(f"  slug:     {slug_val}")
+    print(f"  source:   {source}")
     print(f"  desc:     {desc}")
     print(f"  url:      {primary_url}")
     if external_url:
@@ -220,6 +226,7 @@ def main():
     parser = argparse.ArgumentParser(description="AI Vault search & install")
     parser.add_argument("query", nargs="?", help="Search query")
     parser.add_argument("--cat", help="Filter by category: skill, mcp_server, tool, llm, agent, design")
+    parser.add_argument("--source", help="Filter by source: levelup, skills.sh, mcp-registry, openrouter, awesome-mcp, awesome-agents, awesome-design")
     parser.add_argument("--install", metavar="SLUG", help="Install item by slug")
     parser.add_argument("--get", metavar="SLUG", help="Show full details for a slug")
     parser.add_argument("--collections", action="store_true", help="List all collections")
@@ -236,7 +243,7 @@ def main():
     elif args.get:
         show_item(args.get)
     elif args.query:
-        results = search(args.query, category=args.cat, limit=args.limit)
+        results = search(args.query, category=args.cat, limit=args.limit, source=args.source)
         print_results(results)
     else:
         parser.print_help()
