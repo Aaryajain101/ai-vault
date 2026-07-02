@@ -18,13 +18,24 @@ jobs:
         with:
           python-version: "3.12"
 
-      # Reuse the skills.sh HF description cache from the previous release
-      # (import_hf_skills.py is heavy/rate-limited; refresh it manually, not daily).
-      - name: Restore skills_sh_hf.json from latest release
+      # Reuse caches from the previous release:
+      #  - skills_sh_hf.json: skills.sh descriptions (heavy import, refreshed manually)
+      #  - github_cache.json: stars/pushed/desc per repo (refreshed incrementally below)
+      #  - vault.db (previous): repo list input for the enrichment step
+      - name: Restore caches from latest release
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release download latest --pattern skills_sh_hf.json --clobber || true
+        run: |
+          gh release download latest --pattern skills_sh_hf.json --clobber || true
+          gh release download latest --pattern github_cache.json --clobber || true
+          gh release download latest --pattern vault.db --clobber || true
+
+      - name: Refresh GitHub metadata cache (incremental)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python enrich_github.py --refresh-days 7
 
       - name: Build vault.db from all sources
         run: python fetch.py
@@ -50,4 +61,5 @@ jobs:
           gh release view latest >/dev/null 2>&1 || gh release create latest --title "AI Vault (auto-built)" --notes "Rolling daily build. Download vault.db and place it next to vault_search.py."
           gh release upload latest vault.db --clobber
           if [ -f skills_sh_hf.json ]; then gh release upload latest skills_sh_hf.json --clobber; fi
+          if [ -f github_cache.json ]; then gh release upload latest github_cache.json --clobber; fi
           gh release edit latest --notes "Rolling daily build — last updated $(date -u '+%Y-%m-%d %H:%M UTC'). Download vault.db and place it next to vault_search.py."

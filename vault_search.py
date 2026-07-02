@@ -42,24 +42,36 @@ def get_db():
     return sqlite3.connect(DB_PATH)
 
 
-def search(query, category=None, limit=10, source=None):
+def search(query, category=None, limit=10, source=None, min_stars=0, sort=None):
     con = get_db()
     cur = con.cursor()
+    # Quote each token so FTS5 operators (- : * etc.) in plain queries don't error.
+    fts_query = " ".join('"' + t.replace('"', "") + '"' for t in query.split())
     where = ["items_fts MATCH ?"]
-    params = [query]
+    params = [fts_query]
     if category:
         where.append("i.category = ?")
         params.append(category)
     if source:
         where.append("i.source = ?")
         params.append(source)
+    if min_stars:
+        where.append("i.stars >= ?")
+        params.append(min_stars)
+    # Default ranking blends FTS relevance with the 0-10 usefulness score.
+    # bm25 columns are weighted (name 10, desc 2, category 1, slug 5) so that
+    # description-less forks can't win on shorter-document statistics, and the
+    # 1.5x score term lets official/starred originals outrank clones.
+    order = ("i.stars DESC" if sort == "stars"
+             else "(bm25(items_fts, 10.0, 2.0, 1.0, 5.0) - i.score * 1.5)")
     params.append(limit)
     cur.execute(
         f"""
-        SELECT i.category, i.slug, i.name, i.description, i.primary_url, i.extra, i.source
+        SELECT i.category, i.slug, i.name, i.description, i.primary_url, i.extra,
+               i.source, i.stars, i.score
         FROM items_fts f JOIN items i ON f.rowid = i.id
         WHERE {' AND '.join(where)}
-        ORDER BY rank LIMIT ?
+        ORDER BY {order} LIMIT ?
         """,
         params,
     )
@@ -98,6 +110,15 @@ def stats():
     print("-" * 24)
     for src, count in src_rows:
         print(f"  {(src or '?'):<13} {count:>7,}")
+    con2 = get_db()
+    c2 = con2.cursor()
+    starred = c2.execute("SELECT COUNT(*) FROM items WHERE stars > 0").fetchone()[0]
+    described = c2.execute("SELECT COUNT(*) FROM items WHERE description != ''").fetchone()[0]
+    avg_score = c2.execute("SELECT ROUND(AVG(score),2) FROM items").fetchone()[0]
+    con2.close()
+    print(f"\n  with stars:  {starred:>7,} ({100*starred//max(total,1)}%)")
+    print(f"  described:   {described:>7,} ({100*described//max(total,1)}%)")
+    print(f"  avg score:   {avg_score}")
     print()
 
 
@@ -119,11 +140,9 @@ def print_results(rows):
         print("No results found.")
         return
     print()
-    for cat, slug, name, desc, url, extra_json, source in rows:
-        extra = json.loads(extra_json) if extra_json else {}
-        stars = extra.get("stars", "")
-        stars_str = f"  ★{stars:,}" if isinstance(stars, int) and stars else ""
-        print(f"  [{cat}] {name}{stars_str}  ({source})")
+    for cat, slug, name, desc, url, extra_json, source, stars, score in rows:
+        stars_str = f"  ★{stars:,}" if stars else ""
+        print(f"  [{cat}] {name}{stars_str}  ({source}, score {score})")
         print(f"    slug: {slug}")
         if desc:
             print(f"    {desc[:100]}")
@@ -136,7 +155,7 @@ def install(slug):
         print(f"Slug not found: {slug}")
         sys.exit(1)
 
-    _, category, slug_val, name, desc, primary_url, external_url, extra_json, source = row
+    _, category, slug_val, name, desc, primary_url, external_url, extra_json, source, stars, pushed, score = row
     extra = json.loads(extra_json) if extra_json else {}
 
     print(f"\nInstalling: {name}  [{category}]  (source: {source})")
@@ -206,13 +225,14 @@ def show_item(slug):
         log_usage("GET", slug, "not found")
         return
     log_usage("GET", slug)
-    _, category, slug_val, name, desc, primary_url, external_url, extra_json, source = row
+    _, category, slug_val, name, desc, primary_url, external_url, extra_json, source, stars, pushed, score = row
     extra = json.loads(extra_json) if extra_json else {}
     print(f"\n{'='*50}")
     print(f"  {name}  [{category}]")
     print(f"{'='*50}")
     print(f"  slug:     {slug_val}")
     print(f"  source:   {source}")
+    print(f"  stars:    {stars:,}   score: {score}   pushed: {pushed or '?'}")
     print(f"  desc:     {desc}")
     print(f"  url:      {primary_url}")
     if external_url:
@@ -232,6 +252,8 @@ def main():
     parser.add_argument("--collections", action="store_true", help="List all collections")
     parser.add_argument("--stats", action="store_true", help="Show item counts by category")
     parser.add_argument("--limit", type=int, default=10, help="Max results (default 10)")
+    parser.add_argument("--min-stars", type=int, default=0, help="Only items with >= N GitHub stars")
+    parser.add_argument("--sort", choices=["stars"], help="Sort by stars instead of blended relevance")
     args = parser.parse_args()
 
     if args.stats:
@@ -243,7 +265,8 @@ def main():
     elif args.get:
         show_item(args.get)
     elif args.query:
-        results = search(args.query, category=args.cat, limit=args.limit, source=args.source)
+        results = search(args.query, category=args.cat, limit=args.limit, source=args.source,
+                         min_stars=args.min_stars, sort=args.sort)
         print_results(results)
     else:
         parser.print_help()

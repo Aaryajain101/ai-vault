@@ -5,6 +5,7 @@ update_history.log
 usage_log.log
 skills_sh_hf.json
 skills_sh_hf.state
+github_cache.json
 pull.cmd
 pull.sh
 Thumbs.db

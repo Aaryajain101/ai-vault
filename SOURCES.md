@@ -20,6 +20,19 @@ All sources are merged into the **same** `vault.db` by `fetch.py`. Each item car
 - **Live (daily, in `fetch.py`):** parse `sitemap-skills-*.xml`. Skill URL = `skills.sh/{owner}/{repo}/{skill}` → name, GitHub URL, and `install_command` = `npx skills add https://github.com/{owner}/{repo} --skill {skill}`. Thin (no description).
 - **Rich (one-time, `import_hf_skills.py`):** downloads the HF mirror `tickleliu/all-skills-from-skills-sh` (MIT, ~49.5k rows) via the HF datasets-server rows API, keeps `name/description/skill_name/code`, **discards `detail`**, and writes `skills_sh_hf.json`. `fetch.py` then enriches sitemap skills with those descriptions (matched on `owner/repo/skill`). Heavy; run manually, re-run only to refresh the snapshot.
 
+## Quality pipeline (in `fetch.py`, after merge)
+
+`enrich_github.py` maintains `github_cache.json` — stars / pushedAt / description / existence for every referenced GitHub repo (GraphQL, 100 repos/query, incremental with 7-day refresh; published as a release asset). `fetch.py` then:
+
+1. **Enrich** — set `stars`/`pushed` columns, backfill empty descriptions from repo descriptions.
+2. **Prune dead repos** — cache says repo no longer exists → item dropped.
+3. **Collapse exact clones** — same (name, description): keep one, preferring canonical owners (`anthropics`, `vercel-labs`, `modelcontextprotocol`, …) > highest stars > levelup; survivor records `extra.clone_count`.
+4. **Prune junk names** — <3 chars or punctuation-only.
+5. **Prune hopeless thin entries** — no description after backfill, 0 stars, and a described twin with the same name exists.
+6. **Score** (0–10, `score` column): source authority (≤2) + log-scaled stars (≤4) + description (1) + install command (1) + push recency (≤1) + canonical-owner bonus (1).
+
+Search ranks by `bm25(fts) − 0.6·score` — relevance blended with usefulness. Prune/enrich counts are logged per run in `update_history.log` (`quality:` line).
+
 ## Excluded / gaps
 - `theresanaiforthat` (tools): no public API → not automated. Tools stay covered by `levelup` (~3.5k).
 - Skills that share a name but come from **different repos** are not merged (identity is repo+skill).

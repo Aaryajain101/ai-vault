@@ -292,6 +292,136 @@ def fetch_skills_sh():
     return out
 
 
+# ---------------------------------------------------------------- quality pass
+GITHUB_CACHE_PATH = os.path.join(os.path.dirname(__file__), "github_cache.json")
+CANONICAL_OWNERS = {"anthropics", "vercel-labs", "obra", "modelcontextprotocol",
+                    "e2b-dev", "punkpeye", "voltagent", "microsoft", "google",
+                    "openai", "github", "supabase", "cloudflare", "aws"}
+SOURCE_WEIGHT = {"levelup": 2.0, "mcp-registry": 2.0, "openrouter": 2.0,
+                 "awesome-mcp": 1.5, "awesome-agents": 1.5, "awesome-design": 1.5,
+                 "skills.sh": 1.0}
+
+_JUNK_NAME = re.compile(r"^[\W\d_]*$")
+
+
+def item_repo(item):
+    """owner/repo for an item, or None."""
+    extra = item.get("extra", {}) or {}
+    for url in (extra.get("github_url", ""), item.get("external_url", ""),
+                item.get("primary_url", "")):
+        r = gh_repo(url)
+        if r:
+            return r
+    owner, repo = extra.get("owner"), extra.get("repo")
+    if owner and repo:
+        return f"{str(owner).lower()}/{str(repo).lower()}"
+    return None
+
+
+def score_item(item):
+    """Usefulness score 0-10: authority + popularity + liveness + completeness."""
+    extra = item.get("extra", {}) or {}
+    s = SOURCE_WEIGHT.get(item["source"], 1.0)
+    import math
+    stars = item.get("stars", 0) or 0
+    s += min(4.0, math.log10(stars + 1) * 0.8)          # 100k stars -> +4
+    if item.get("description"):
+        s += 1.0
+    if extra.get("install_command"):
+        s += 1.0
+    pushed = item.get("pushed", "") or ""
+    if pushed:
+        try:
+            days = (datetime.datetime.now(datetime.timezone.utc)
+                    - datetime.datetime.fromisoformat(pushed.replace("Z", "+00:00"))).days
+            s += 1.0 if days <= 180 else (0.5 if days <= 730 else 0.0)
+        except Exception:
+            pass
+    r = item_repo(item)
+    if r and r.split("/")[0] in CANONICAL_OWNERS:
+        s += 1.0
+    return round(min(s, 10.0), 2)
+
+
+def quality_pass(kept):
+    """Enrich from github_cache.json, prune junk, score. Returns (items, stats)."""
+    gcache = {}
+    if os.path.exists(GITHUB_CACHE_PATH):
+        try:
+            gcache = json.load(open(GITHUB_CACHE_PATH, encoding="utf-8"))
+        except Exception:
+            gcache = {}
+
+    stats = {"enriched": 0, "desc_backfilled": 0, "dead_repo": 0,
+             "clones": 0, "junk_name": 0, "thin": 0, "cache_repos": len(gcache)}
+
+    # 1. enrich + 2. drop dead repos
+    # NOTE: clustering (step 3) must use the ORIGINAL description — repo-desc
+    # backfill would make identical forks look distinct (each repo has its own
+    # description) and let clones slip through.
+    alive = []
+    for it in kept:
+        it["_orig_desc"] = it["description"]
+        r = item_repo(it)
+        meta = gcache.get(r) if r else None
+        if meta is not None:
+            if not meta.get("exists", True):
+                stats["dead_repo"] += 1
+                continue
+            old = (it.get("extra", {}) or {}).get("stars")
+            it["stars"] = max(meta.get("stars", 0),
+                              old if isinstance(old, int) else 0)
+            it["pushed"] = meta.get("pushed", "")
+            stats["enriched"] += 1
+            if not it["description"] and meta.get("desc"):
+                it["description"] = meta["desc"]
+                stats["desc_backfilled"] += 1
+        else:
+            old = (it.get("extra", {}) or {}).get("stars")
+            it["stars"] = old if isinstance(old, int) else 0
+            it["pushed"] = ""
+        alive.append(it)
+
+    # 3. collapse exact clones (same lowercased name + same ORIGINAL description)
+    def keep_rank(it):
+        r = item_repo(it) or ""
+        return (1 if r.split("/")[0] in CANONICAL_OWNERS else 0,
+                it.get("stars", 0),
+                1 if it["source"] == "levelup" else 0)
+    clusters = {}
+    for it in alive:
+        key = (it["name"].lower(), it["_orig_desc"]) if it["_orig_desc"] else None
+        clusters.setdefault(key, []).append(it)
+    survivors = []
+    for key, group in clusters.items():
+        if key is None or len(group) == 1:
+            survivors.extend(group)
+            continue
+        group.sort(key=keep_rank, reverse=True)
+        group[0]["extra"]["clone_count"] = len(group) - 1
+        survivors.append(group[0])
+        stats["clones"] += len(group) - 1
+
+    # 4. junk names  +  5. hopeless thin entries
+    described_names = {it["name"].lower() for it in survivors if it["description"]}
+    final = []
+    for it in survivors:
+        if len(it["name"]) < 3 or _JUNK_NAME.match(it["name"]):
+            stats["junk_name"] += 1
+            continue
+        if (not it["description"] and it.get("stars", 0) == 0
+                and it["name"].lower() in described_names):
+            stats["thin"] += 1
+            continue
+        final.append(it)
+
+    # 6. score
+    for it in final:
+        it.pop("_orig_desc", None)
+        it["score"] = score_item(it)
+    return final, stats
+
+
 # ---------------------------------------------------------------- merge / dedup
 def merge(source_lists):
     """source_lists: dict source -> [records]. Returns (kept, per_source, dup_counts)."""
@@ -353,8 +483,14 @@ def build_db(items, collections):
             primary_url TEXT,
             external_url TEXT,
             extra TEXT,
-            source TEXT DEFAULT 'levelup'
+            source TEXT DEFAULT 'levelup',
+            stars INTEGER DEFAULT 0,
+            pushed TEXT DEFAULT '',
+            score REAL DEFAULT 0
         );
+        CREATE INDEX idx_items_category ON items(category);
+        CREATE INDEX idx_items_source ON items(source);
+        CREATE INDEX idx_items_stars ON items(stars DESC);
         CREATE TABLE collections (
             id INTEGER PRIMARY KEY,
             slug TEXT NOT NULL UNIQUE,
@@ -373,10 +509,11 @@ def build_db(items, collections):
     """)
     for it in items:
         cur.execute(
-            "INSERT OR IGNORE INTO items (category, slug, name, description, primary_url, external_url, extra, source) "
-            "VALUES (?,?,?,?,?,?,?,?)",
+            "INSERT OR IGNORE INTO items (category, slug, name, description, primary_url, external_url, extra, source, stars, pushed, score) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
             (it["category"], it["slug"], it["name"], it["description"],
-             it["primary_url"], it["external_url"], json.dumps(it["extra"]), it["source"]))
+             it["primary_url"], it["external_url"], json.dumps(it["extra"]), it["source"],
+             it.get("stars", 0), it.get("pushed", ""), it.get("score", 0)))
     cur.execute("INSERT INTO items_fts(items_fts) VALUES('rebuild')")
     for col in collections:
         cur.execute("INSERT OR IGNORE INTO collections (slug, title, blurb, icon) VALUES (?,?,?,?)",
@@ -390,7 +527,7 @@ def build_db(items, collections):
     return len(items)
 
 
-def write_history(old_snap, kept, per_cat, per_source, dup_counts, ok=True, error=""):
+def write_history(old_snap, kept, per_cat, per_source, dup_counts, ok=True, error="", qstats=None):
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     lines = [f"===== {now} ====="]
     if not ok:
@@ -402,6 +539,10 @@ def write_history(old_snap, kept, per_cat, per_source, dup_counts, ok=True, erro
     lines.append(f"SUCCESS  total={len(new_snap):,}   "
                  + "  ".join(f"{k}={v}" for k, v in per_cat.items()))
     lines.append("  sources: " + "  ".join(f"{s}={per_source.get(s, 0)}" for s in SOURCE_ORDER))
+    if qstats:
+        lines.append(f"  quality: enriched={qstats['enriched']:,} desc-backfilled={qstats['desc_backfilled']:,}"
+                     f" | pruned dead={qstats['dead_repo']:,} clones={qstats['clones']:,}"
+                     f" junk={qstats['junk_name']:,} thin={qstats['thin']:,}")
     dups = "  ".join(f"{s}={dup_counts.get(s, 0)}" for s in SOURCE_ORDER if dup_counts.get(s))
     if dups:
         lines.append("  dup-skipped: " + dups)
@@ -465,16 +606,25 @@ def main():
             print(f"  {name}: error — {e}")
 
     kept, per_source, dup_counts = merge(source_lists)
-    per_cat = {}
+
+    print("Quality pass (enrich / prune / score)...")
+    kept, qstats = quality_pass(kept)
+    print(f"  cache={qstats['cache_repos']:,} repos  enriched={qstats['enriched']:,}"
+          f"  desc-backfilled={qstats['desc_backfilled']:,}")
+    print(f"  pruned: dead-repo={qstats['dead_repo']:,}  clones={qstats['clones']:,}"
+          f"  junk-name={qstats['junk_name']:,}  thin={qstats['thin']:,}")
+
+    per_cat, per_source = {}, {}
     for it in kept:
         per_cat[it["category"]] = per_cat.get(it["category"], 0) + 1
+        per_source[it["source"]] = per_source.get(it["source"], 0) + 1
 
     old_snap = read_snapshot(DB_PATH)
     print("Building vault.db...")
     total = build_db(kept, collections)
     print(f"Done. {total:,} items indexed in {DB_PATH}")
     print("  per source: " + ", ".join(f"{s}={per_source.get(s,0)}" for s in SOURCE_ORDER))
-    write_history(old_snap, kept, per_cat, per_source, dup_counts, ok=True)
+    write_history(old_snap, kept, per_cat, per_source, dup_counts, ok=True, qstats=qstats)
     print(f"History appended to {HISTORY_PATH}")
 
 

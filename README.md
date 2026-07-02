@@ -2,7 +2,8 @@
 
 A local, searchable catalog of **30,000+ AI resources** — Claude Code skills, MCP servers, AI tools, LLMs, agents, and design systems — aggregated daily from 7 upstream sources, deduplicated, and wired into Claude Code for one-command install.
 
-- **Search** anything by keyword (SQLite FTS5, instant, offline)
+- **Search** anything by keyword (SQLite FTS5, instant, offline) — results ranked by relevance × usefulness (GitHub stars, source authority, liveness, completeness), so originals outrank forks
+- **Filter** with `--min-stars N`, `--sort stars`, `--cat`, `--source`
 - **Install** skills (`npx skills add …`) and MCP servers (`claude mcp add …`) straight from search results
 - **Auto-updates daily** — GitHub Actions rebuilds the database every night and publishes it to the `latest` release; your machine pulls it automatically
 - **Windows + macOS**
