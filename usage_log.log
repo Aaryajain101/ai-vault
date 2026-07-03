@@ -11,3 +11,11 @@
 2026-07-02 16:13:35  SEARCH   "skill-creator"   -> 2 results
 2026-07-02 16:14:29  SEARCH   "skill-creator"   -> 2 results
 2026-07-02 16:14:30  SEARCH   "postgres" --cat mcp_server   -> 2 results
+2026-07-03 12:16:26  SEARCH   "caveman"   -> 5 results
+2026-07-03 12:16:26  SEARCH   "compacting context"   -> 2 results
+2026-07-03 12:16:26  SEARCH   "token efficient prompting"   -> 0 results
+2026-07-03 12:16:27  SEARCH   "context compression"   -> 5 results
+2026-07-03 12:16:54  SEARCH   "structured extraction from documents"   -> 4 results
+2026-07-03 12:16:54  SEARCH   "meeting minutes to structured data"   -> 0 results
+2026-07-03 12:16:54  SEARCH   "subagent orchestration cost"   -> 0 results
+2026-07-03 12:16:55  SEARCH   "checkpoint resume long task"   -> 1 results
