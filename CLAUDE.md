@@ -9,6 +9,13 @@ See also the user memory `ai-vault-search.md` for prior session context, and `SO
 Merged in priority order (earlier wins on dedup): `levelup` (base, all 6 categories) → `mcp-registry` → `openrouter` → `awesome-mcp` → `awesome-agents` → `awesome-design` → `skills.sh`. Every item carries a `source` column; cross-source duplicates are collapsed by a canonical identity key.
 
 ## Usage
+
+> **Python invocation:** call scripts with the full interpreter path
+> `C:\Users\aarya\AppData\Local\Python\pythoncore-3.14-64\python.exe` — a bare `python`
+> (especially via the Bash tool) resolves to the disabled Windows Store alias and fails
+> with "Python was not found". Don't pipe stderr to null while debugging, or failures
+> look like empty results. (`python` below is shorthand for that full path.)
+
 ```
 python vault_search.py "<query>"                    # full-text search
 python vault_search.py "<query>" --cat tool          # filter by category (skill|mcp_server|tool|llm|agent|design)

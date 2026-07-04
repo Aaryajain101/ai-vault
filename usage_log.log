@@ -19,3 +19,45 @@
 2026-07-03 12:16:54  SEARCH   "meeting minutes to structured data"   -> 0 results
 2026-07-03 12:16:54  SEARCH   "subagent orchestration cost"   -> 0 results
 2026-07-03 12:16:55  SEARCH   "checkpoint resume long task"   -> 1 results
+2026-07-04 01:09:26  SEARCH   "token reduction cost optimization"   -> 1 results
+2026-07-04 01:09:26  SEARCH   "subagent orchestration delegation"   -> 4 results
+2026-07-04 01:09:27  SEARCH   "context compaction"   -> 10 results
+2026-07-04 01:09:50  GET      skill/strategic-compact
+2026-07-04 01:09:50  GET      skill/context-optimization
+2026-07-04 01:09:51  GET      skill/ai-cutting-costs
+2026-07-04 01:09:51  GET      skill/workflow-orchestration
+2026-07-04 17:30:03  SEARCH   "design system UI dashboard"   -> 4 results
+2026-07-04 17:30:14  SEARCH   "design.md"   -> 10 results
+2026-07-04 17:30:15  SEARCH   "UI design guidelines"   -> 10 results
+2026-07-04 17:30:28  SEARCH   "dashboard SaaS" --cat design   -> 0 results
+2026-07-04 17:30:29  SEARCH   "linear stripe vercel" --cat design   -> 0 results
+2026-07-04 17:41:17  SEARCH   "CLAUDE.md"   -> 8 results
+2026-07-04 17:41:19  SEARCH   "claude code instructions"   -> 8 results
+2026-07-04 17:41:20  SEARCH   "memory management"   -> 8 results
+2026-07-04 17:41:26  GET      skill/claude-md-improver
+2026-07-04 17:41:28  GET      skill/claude-md-progressive-disclosurer
+2026-07-04 17:41:29  GET      skill/improve-claude-md
+2026-07-04 17:41:31  GET      skill/authoring-claude-md
+2026-07-04 17:41:37  GET      skill/claude-md-management
+2026-07-04 17:41:39  GET      skill/claude-md-enhancer
+2026-07-04 17:41:40  SEARCH   "prompt optimization"   -> 8 results
+2026-07-04 17:41:42  SEARCH   "context management"   -> 8 results
+2026-07-04 17:41:49  GET      skill/context-window-management
+2026-07-04 17:41:50  GET      skill/context-window-management-2
+2026-07-04 17:41:52  SEARCH   "instruction following"   -> 8 results
+2026-07-04 17:41:53  SEARCH   "system prompt design"   -> 8 results
+2026-07-04 17:42:01  GET      skill/project-memory-sh3
+2026-07-04 17:42:02  GET      skill/claude-ecosystem
+2026-07-04 17:42:04  SEARCH   "token efficiency agent"   -> 5 results
+2026-07-04 17:42:05  SEARCH   "subagent orchestration"   -> 8 results
+2026-07-04 17:42:14  GET      skill/reviewing-claude-config
+2026-07-04 17:42:15  GET      skill/security-scan
+2026-07-04 17:42:16  SEARCH   "secrets in config files"   -> 0 results
+2026-07-04 17:42:27  SEARCH   "progressive disclosure"   -> 6 results
+2026-07-04 17:42:28  SEARCH   "claude code instructions" --cat skill   -> 4 results
+2026-07-04 17:53:28  SEARCH   "claude-md-improver"   -> 1 results
+2026-07-04 17:54:18  INSTALL  skill/claude-md-improver   -> [skill] claude-md-improver
+2026-07-04 17:57:10  SEARCH   "caveman"   -> 8 results
+2026-07-04 17:57:29  GET      skill/caveman
+2026-07-04 17:57:29  GET      skill/caveman-compress
+2026-07-04 17:57:43  INSTALL  skill/caveman   -> [skill] caveman
