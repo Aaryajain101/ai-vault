@@ -20,6 +20,8 @@ Merged in priority order (earlier wins on dedup): `levelup` (base, all 6 categor
 python vault_search.py "<query>"                    # full-text search
 python vault_search.py "<query>" --cat tool          # filter by category (skill|mcp_server|tool|llm|agent|design)
 python vault_search.py "<query>" --source skills.sh  # filter by provenance
+python vault_search.py "<query>" --limit 20           # result count (default 10; it is --limit, NOT --n)
+python vault_search.py "<query>" --min-stars 100 --sort stars   # quality-filter / rank by GitHub stars
 python vault_search.py --install <slug>              # auto-runs `npx skills add` / `claude mcp add`, else opens URL
 python vault_search.py --get <slug>                   # full item details (incl. source)
 python vault_search.py --stats                        # counts by category AND by source

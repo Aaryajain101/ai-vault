@@ -62,3 +62,6 @@
 2026-07-04 17:57:29  GET      skill/caveman-compress
 2026-07-04 17:57:43  INSTALL  skill/caveman   -> [skill] caveman
 2026-07-08 16:02:38  SEARCH   "google search console"   -> 5 results
+2026-07-17 13:59:47  SEARCH   "local audio transcription speaker diarization whisper"   -> 0 results
+2026-07-17 14:00:22  SEARCH   "transcription"   -> 5 results
+2026-07-17 14:00:22  SEARCH   "whisper"   -> 5 results
