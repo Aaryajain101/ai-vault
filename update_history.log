@@ -4485,3 +4485,7 @@ SUCCESS  total=78,501   skill=52068  mcp_server=21400  tool=3474  llm=579  agent
     - [llm] Mistral: Mistral Nemo  (llm/mistralai-mistral-nemo)
     ... and 2926 more removed
 
+===== 2026-08-21 11:07:04 =====
+FAILED  base source levelup empty
+  (database left unchanged)
+
