@@ -102,3 +102,14 @@
 2026-08-30 13:07:24  SEARCH   "personal knowledge management outliner"   -> 0 results
 2026-08-30 13:07:24  SEARCH   "notion mcp"   -> 4 results
 2026-08-30 13:07:25  SEARCH   "competitive intelligence signal detection"   -> 0 results
+2026-08-30 15:15:24  SEARCH   "microsoft graph" --cat mcp_server   -> 5 results
+2026-08-30 15:15:26  SEARCH   "postgres database" --cat mcp_server   -> 0 results
+2026-08-30 15:15:35  SEARCH   "postgres" --cat mcp_server   -> 3 results
+2026-08-30 15:15:36  GET      mcp_server/lokka-microsoft-graph
+2026-08-30 18:16:45  SEARCH   "work management software comparison"   -> 0 results
+2026-08-30 18:16:45  SEARCH   "vendor evaluation scorecard"   -> 0 results
+2026-08-30 18:16:45  SEARCH   "smartsheet"   -> 4 results
+2026-08-30 18:16:45  SEARCH   "asana monday project management"   -> 0 results
+2026-08-30 18:58:29  SEARCH   "document management ECM"   -> 0 results
+2026-08-30 18:58:29  SEARCH   "box files api"   -> 0 results
+2026-08-30 18:58:30  SEARCH   "sharepoint lists"   -> 0 results
