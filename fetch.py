@@ -2,16 +2,24 @@
 fetch.py — Multi-source AI Vault builder (SQLite + FTS5)
 Run: python fetch.py
 
-Sources (priority order — earlier wins on dedup, keeps its slugs):
-  levelup       leveluplearning.in            base, all 6 categories
-  mcp-registry  registry.modelcontextprotocol.io/v0/servers   mcp_server
-  openrouter    openrouter.ai/api/v1/models   llm
-  awesome-mcp   punkpeye/awesome-mcp-servers  mcp_server
-  awesome-agents e2b-dev/awesome-ai-agents     agent
-  awesome-design VoltAgent/awesome-design-md   design
-  skills.sh     public sitemaps (+ skills_sh_hf.json cache)   skill
+Sources (priority order - earlier wins on dedup, keeps its slugs):
+  levelup           leveluplearning.in            base, all 6 categories
+  mcp-registry      registry.modelcontextprotocol.io/v0/servers   mcp_server
+  anthropic-skills  github.com/anthropics/skills  skill (first-party)
+  openrouter        openrouter.ai/api/v1/models   llm
+  models-dev        models.dev/api.json           llm
+  huggingface       huggingface.co/api/models     llm (top-N by downloads)
+  awesome-mcp       punkpeye/awesome-mcp-servers  mcp_server
+  smithery          registry.smithery.ai/servers  mcp_server
+  awesome-agents    e2b-dev/awesome-ai-agents     agent
+  awesome-claude-subagents  VoltAgent/awesome-claude-code-subagents  agent
+  awesome-design    VoltAgent/awesome-design-md   design
+  skills.sh         public sitemaps (+ skills_sh_hf.json cache)   skill
 
-Each adapter is fault-isolated: a failing source is logged and skipped.
+Each adapter is fault-isolated: a failing source is logged and skipped, and its
+last-good fetch (snapshots/<source>.json.gz) is used instead when available.
+A sanity guard refuses to rebuild if the new total shrinks below 60% of the
+existing DB, so transient multi-source outages can never gut the catalog.
 Duplicates across sources are collapsed by a canonical identity key;
 leveluplearning is canonical and its slugs are preserved.
 """
@@ -34,10 +42,15 @@ HISTORY_PATH = os.path.join(os.path.dirname(__file__), "update_history.log")
 HF_CACHE_PATH = os.path.join(os.path.dirname(__file__), "skills_sh_hf.json")
 
 # Dedup priority (first = canonical) and slug-collision suffixes.
-SOURCE_ORDER = ["levelup", "mcp-registry", "openrouter", "awesome-mcp",
-                "awesome-agents", "awesome-design", "skills.sh"]
+SOURCE_ORDER = ["levelup", "mcp-registry", "anthropic-skills", "openrouter",
+                "models-dev", "huggingface", "awesome-mcp", "smithery",
+                "awesome-agents", "awesome-claude-subagents", "awesome-design",
+                "skills.sh"]
 SOURCE_SUFFIX = {"levelup": "lvl", "mcp-registry": "mcpreg", "openrouter": "or",
+                 "anthropic-skills": "anth", "models-dev": "mdev",
+                 "huggingface": "hf", "smithery": "smi",
                  "awesome-mcp": "amcp", "awesome-agents": "aagent",
+                 "awesome-claude-subagents": "acsub",
                  "awesome-design": "adesign", "skills.sh": "sh"}
 
 
@@ -45,10 +58,16 @@ SOURCE_SUFFIX = {"levelup": "lvl", "mcp-registry": "mcpreg", "openrouter": "or",
 def fetch_bytes(url, timeout=60, retries=3):
     """GET with retries — DNS on some networks is intermittent (getaddrinfo 11001)."""
     last = None
+    headers = {"User-Agent": "Mozilla/5.0", "Accept-Encoding": "gzip"}
+    # Authenticated GitHub API calls when a token is around (CI runners share
+    # the 60 req/hr anonymous limit and would starve fetch_anthropic_skills).
+    if "api.github.com" in url:
+        token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
     for attempt in range(retries):
         try:
-            req = urllib.request.Request(
-                url, headers={"User-Agent": "Mozilla/5.0", "Accept-Encoding": "gzip"})
+            req = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 data = r.read()
                 if r.headers.get("Content-Encoding") == "gzip" or data[:2] == b"\x1f\x8b":
@@ -67,6 +86,32 @@ def fetch_json(url, timeout=60):
 
 def fetch_text(url, timeout=60):
     return fetch_bytes(url, timeout).decode("utf-8", "replace")
+
+
+# ---------------------------------------------------------------- source snapshots
+SNAP_DIR = os.path.join(os.path.dirname(__file__), "snapshots")
+
+
+def load_snapshot(source):
+    """Last-good fetch for a source, or None."""
+    p = os.path.join(SNAP_DIR, f"{source}.json.gz")
+    if not os.path.exists(p):
+        return None
+    try:
+        with gzip.open(p, "rt", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def save_snapshot(source, items):
+    try:
+        os.makedirs(SNAP_DIR, exist_ok=True)
+        with gzip.open(os.path.join(SNAP_DIR, f"{source}.json.gz"), "wt",
+                       encoding="utf-8") as f:
+            json.dump(items, f)
+    except Exception as e:
+        print(f"  snapshot save failed for {source}: {e}")
 
 
 # ---------------------------------------------------------------- identity helpers
@@ -292,14 +337,162 @@ def fetch_skills_sh():
     return out
 
 
+def _skill_md_description(text):
+    """description: value from SKILL.md YAML frontmatter (handles folded > blocks)."""
+    text = text.lstrip("﻿")
+    m = re.match(r"^---\s*\n(.*?)\n---", text, re.S)
+    if not m:
+        return ""
+    desc, capturing = [], False
+    for line in m.group(1).split("\n"):
+        if capturing:
+            if line.startswith((" ", "\t")) or not line.strip():
+                desc.append(line.strip())
+                continue
+            break
+        dm = re.match(r"^description:\s*(.*)$", line)
+        if dm:
+            v = dm.group(1).strip()
+            if v not in (">", ">-", "|", "|-"):
+                desc.append(v.strip("'\""))
+            capturing = True
+    return " ".join(x for x in desc if x)[:500].strip()
+
+
+def fetch_anthropic_skills(max_desc_fetch=400):
+    """First-party skills from the anthropics/skills GitHub repo."""
+    tree = fetch_json(
+        "https://api.github.com/repos/anthropics/skills/git/trees/main?recursive=1")
+    paths = [t["path"] for t in tree.get("tree", [])
+             if t.get("path", "").endswith("/SKILL.md")]
+    out = []
+    for p in paths[:max_desc_fetch]:
+        skill = p.split("/")[-2]
+        desc = ""
+        try:
+            desc = _skill_md_description(fetch_text(
+                f"https://raw.githubusercontent.com/anthropics/skills/main/{p}",
+                timeout=30))
+        except Exception:
+            pass
+        out.append(rec(
+            "skill", f"skill/{slugify(skill)}", skill, desc,
+            f"https://github.com/anthropics/skills/tree/main/{p.rsplit('/', 1)[0]}",
+            "https://github.com/anthropics/skills",
+            {"owner": "anthropics", "repo": "skills", "skill_name": skill,
+             "github_url": "https://github.com/anthropics/skills",
+             "install_command": f"npx skills add https://github.com/anthropics/skills --skill {skill}"},
+            "anthropic-skills"))
+    return out
+
+
+def fetch_smithery(page_size=100, max_pages=200):
+    """Smithery MCP registry - open JSON API with verified/useCount metadata."""
+    out, page = [], 1
+    while page <= max_pages:
+        data = fetch_json(
+            f"https://registry.smithery.ai/servers?pageSize={page_size}&page={page}")
+        servers = data.get("servers", [])
+        for s in servers:
+            if s.get("unlisted") or s.get("inactive"):
+                continue
+            qn = s.get("qualifiedName", "")
+            name = s.get("displayName") or qn
+            home = s.get("homepage") or ""
+            extra = {"qualified_name": qn, "use_count": s.get("useCount"),
+                     "verified": s.get("verified"), "remote": s.get("remote")}
+            if gh_repo(home):
+                extra["github_url"] = home
+            out.append(rec("mcp_server", f"mcp_server/{slugify(name)}", name,
+                           s.get("description", ""),
+                           f"https://smithery.ai/server/{qn}", home, extra,
+                           "smithery"))
+        pg = data.get("pagination") or {}
+        if not servers or page >= int(pg.get("totalPages") or 0):
+            break
+        page += 1
+    return out
+
+
+def fetch_models_dev():
+    """models.dev open catalog: provider -> models with cost/context/capability."""
+    data = fetch_json("https://models.dev/api.json")
+    out = []
+    for pid, prov in data.items():
+        if not isinstance(prov, dict):
+            continue
+        pname = prov.get("name") or pid
+        for mid, m in (prov.get("models") or {}).items():
+            limit = m.get("limit") or {}
+            cost = m.get("cost") or {}
+            out.append(rec(
+                "llm", f"llm/{slugify(pid + '-' + mid)}",
+                f"{pname}: {m.get('name') or mid}", m.get("description", ""),
+                prov.get("doc") or "https://models.dev", "",
+                {"model_id": mid, "provider": pid,
+                 "context_length": limit.get("context"),
+                 "price_prompt": cost.get("input"),
+                 "price_completion": cost.get("output"),
+                 "open_weights": m.get("open_weights"),
+                 "reasoning": m.get("reasoning"), "tool_call": m.get("tool_call")},
+                "models-dev"))
+    return out
+
+
+def fetch_huggingface():
+    """Hugging Face: top generation models by downloads (open weights)."""
+    out = []
+    for tag, limit in (("text-generation", 1000), ("image-text-to-text", 300)):
+        data = fetch_json("https://huggingface.co/api/models?pipeline_tag="
+                          f"{tag}&sort=downloads&direction=-1&limit={limit}")
+        for m in data:
+            mid = m.get("id") or m.get("modelId") or ""
+            if not mid:
+                continue
+            dl = m.get("downloads", 0) or 0
+            out.append(rec(
+                "llm", f"llm/{slugify(mid)}", mid,
+                f"{tag} model on Hugging Face ({dl:,} downloads)",
+                f"https://huggingface.co/{mid}", "",
+                {"model_id": mid, "downloads": dl, "likes": m.get("likes"),
+                 "pipeline_tag": tag, "open_weights": True}, "huggingface"))
+    return out
+
+
+def fetch_claude_subagents():
+    """VoltAgent/awesome-claude-code-subagents - bullets with relative .md links."""
+    repo = "https://github.com/VoltAgent/awesome-claude-code-subagents"
+    text = fetch_text("https://raw.githubusercontent.com/VoltAgent/"
+                      "awesome-claude-code-subagents/main/README.md")
+    out, seen = [], set()
+    for line in text.split("\n"):
+        m = re.match(r"^\s*[-*]\s+\[(.+?)\]\((categories/[^)]+\.md)\)"
+                     "\\s*(?:[-:\\u2013\\u2014]\\s*)?(.*)$", line)
+        if not m:
+            continue
+        name = m.group(1).replace("**", "").replace("`", "").strip()
+        rel = m.group(2)
+        if not name or rel in seen:
+            continue
+        seen.add(rel)
+        # external_url/github_url stay empty so canon_key keys on the agent
+        # name, not the shared repo (one key would collapse all of them).
+        out.append(rec("agent", f"agent/{slugify(name)}", name,
+                       _clean_md(m.group(3)), f"{repo}/blob/main/{rel}", "",
+                       {"subagent_path": rel}, "awesome-claude-subagents"))
+    return out
+
+
 # ---------------------------------------------------------------- quality pass
 GITHUB_CACHE_PATH = os.path.join(os.path.dirname(__file__), "github_cache.json")
 CANONICAL_OWNERS = {"anthropics", "vercel-labs", "obra", "modelcontextprotocol",
                     "e2b-dev", "punkpeye", "voltagent", "microsoft", "google",
                     "openai", "github", "supabase", "cloudflare", "aws"}
 SOURCE_WEIGHT = {"levelup": 2.0, "mcp-registry": 2.0, "openrouter": 2.0,
+                 "anthropic-skills": 2.0, "models-dev": 2.0,
+                 "huggingface": 1.5, "smithery": 1.5,
                  "awesome-mcp": 1.5, "awesome-agents": 1.5, "awesome-design": 1.5,
-                 "skills.sh": 1.0}
+                 "awesome-claude-subagents": 1.5, "skills.sh": 1.0}
 
 _JUNK_NAME = re.compile(r"^[\W\d_]*$")
 
@@ -574,23 +767,38 @@ def write_history(old_snap, kept, per_cat, per_source, dup_counts, ok=True, erro
 def main():
     print("Fetching sources...")
     levelup_items, collections = fetch_levelup()
+    if levelup_items:
+        save_snapshot("levelup", levelup_items)
+        save_snapshot("levelup-collections", collections)
+    else:
+        cached = load_snapshot("levelup")
+        if cached:
+            print(f"  levelup: live fetch empty - using snapshot ({len(cached)} items)")
+            levelup_items = cached
+            collections = load_snapshot("levelup-collections") or []
 
-    # Base-source guard: never wipe the DB if leveluplearning failed.
+    # Base-source guard: never wipe the DB if levelup failed and no snapshot exists.
     if not levelup_items:
-        print("Base source (levelup) returned 0 items — keeping existing DB.")
-        write_history(None, [], {}, {}, {}, ok=False, error="base source levelup empty")
+        print("Base source (levelup) returned 0 items and no snapshot - keeping existing DB.")
+        write_history(None, [], {}, {}, {}, ok=False,
+                      error="base source levelup empty, no snapshot")
         return
 
     source_lists = {"levelup": levelup_items}
     adapters = [
         ("mcp-registry", fetch_mcp_registry),
+        ("anthropic-skills", fetch_anthropic_skills),
         ("openrouter", fetch_openrouter),
+        ("models-dev", fetch_models_dev),
+        ("huggingface", fetch_huggingface),
         ("awesome-mcp", lambda: fetch_awesome_md(
             "https://raw.githubusercontent.com/punkpeye/awesome-mcp-servers/main/README.md",
             "mcp_server", "awesome-mcp", "bullet")),
+        ("smithery", fetch_smithery),
         ("awesome-agents", lambda: fetch_awesome_md(
             "https://raw.githubusercontent.com/e2b-dev/awesome-ai-agents/main/README.md",
             "agent", "awesome-agents", "heading")),
+        ("awesome-claude-subagents", fetch_claude_subagents),
         ("awesome-design", lambda: fetch_awesome_md(
             "https://raw.githubusercontent.com/VoltAgent/awesome-design-md/main/README.md",
             "design", "awesome-design", "bullet")),
@@ -599,11 +807,18 @@ def main():
     for name, fn in adapters:
         try:
             got = fn()
-            source_lists[name] = got
-            print(f"  {name}: {len(got)} items")
         except Exception as e:
-            source_lists[name] = []
-            print(f"  {name}: error — {e}")
+            got = []
+            print(f"  {name}: error - {e}")
+        if got:
+            source_lists[name] = got
+            save_snapshot(name, got)
+            print(f"  {name}: {len(got)} items")
+        else:
+            cached = load_snapshot(name) or []
+            source_lists[name] = cached
+            if cached:
+                print(f"  {name}: empty/failed - using snapshot ({len(cached)} items)")
 
     kept, per_source, dup_counts = merge(source_lists)
 
@@ -620,6 +835,13 @@ def main():
         per_source[it["source"]] = per_source.get(it["source"], 0) + 1
 
     old_snap = read_snapshot(DB_PATH)
+    # Sanity guard: refuse to shrink the catalog by more than 40% in one run.
+    if old_snap and len(kept) < 0.6 * len(old_snap):
+        msg = (f"sanity guard: new total {len(kept):,} under 60% "
+               f"of existing {len(old_snap):,}")
+        print(f"ABORTED - {msg}. Keeping existing DB.")
+        write_history(None, [], {}, {}, {}, ok=False, error=msg)
+        return
     print("Building vault.db...")
     total = build_db(kept, collections)
     print(f"Done. {total:,} items indexed in {DB_PATH}")

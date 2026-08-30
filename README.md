@@ -1,6 +1,6 @@
 # AI Vault
 
-A local, searchable catalog of **30,000+ AI resources** — Claude Code skills, MCP servers, AI tools, LLMs, agents, and design systems — aggregated daily from 7 upstream sources, deduplicated, and wired into Claude Code for one-command install.
+A local, searchable catalog of **80,000+ AI resources** — Claude Code skills, MCP servers, AI tools, LLMs, agents, and design systems — aggregated daily from 12 upstream sources, deduplicated, and wired into Claude Code for one-command install.
 
 - **Search** anything by keyword (SQLite FTS5, instant, offline) — results ranked by relevance × usefulness (GitHub stars, source authority, liveness, completeness), so originals outrank forks
 - **Filter** with `--min-stars N`, `--sort stars`, `--cat`, `--source`
@@ -40,10 +40,10 @@ python vault_search.py --stats
 
 | When | What |
 |------|------|
-| Daily 00:30 UTC | GitHub Actions runs `fetch.py`: pulls all 7 sources, dedups, sanity-checks, publishes `vault.db` to the `latest` release |
+| Daily 00:30 UTC | GitHub Actions runs `fetch.py`: pulls all 12 sources, dedups, sanity-checks, publishes `vault.db` to the `latest` release |
 | Daily 7 AM (your machine) | `pull` job downloads the new `vault.db` + `git pull`s script updates |
 
-Sources: leveluplearning.in (base), official MCP Registry, OpenRouter, punkpeye/awesome-mcp-servers, e2b/awesome-ai-agents, VoltAgent/awesome-design-md, skills.sh. Details, endpoints, licenses, and dedup rules: [SOURCES.md](SOURCES.md).
+Sources: leveluplearning.in (base), official MCP Registry, anthropics/skills, OpenRouter, models.dev, Hugging Face, punkpeye/awesome-mcp-servers, Smithery, e2b/awesome-ai-agents, VoltAgent/awesome-claude-code-subagents, VoltAgent/awesome-design-md, skills.sh. Details, endpoints, licenses, and dedup rules: [SOURCES.md](SOURCES.md).
 
 ## Repo layout
 

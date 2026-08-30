@@ -4,7 +4,7 @@ All sources are merged into the **same** `vault.db` by `fetch.py`. Each item car
 `source` column; duplicates across sources are collapsed by a canonical identity key
 (`canon_key` in `fetch.py`). Priority order (earlier wins, keeps its slug):
 
-`levelup → mcp-registry → openrouter → awesome-mcp → awesome-agents → awesome-design → skills.sh`
+`levelup → mcp-registry → anthropic-skills → openrouter → models-dev → huggingface → awesome-mcp → smithery → awesome-agents → awesome-claude-subagents → awesome-design → skills.sh`
 
 | source | category | access | endpoint | license | notes |
 |--------|----------|--------|----------|---------|-------|
@@ -15,6 +15,11 @@ All sources are merged into the **same** `vault.db` by `fetch.py`. Each item car
 | `awesome-agents` | agent | raw README markdown (heading) | `raw.githubusercontent.com/e2b-dev/awesome-ai-agents/main/README.md` | open | `## [Name](url)` + next line = desc |
 | `awesome-design` | design | raw README markdown (bullet) | `raw.githubusercontent.com/VoltAgent/awesome-design-md/main/README.md` | open | `- [**Name**](url) - desc` |
 | `skills.sh` | skill | public sitemaps (+ HF cache) | `skills.sh/sitemap.xml → sitemap-skills-*.xml` | site data / MIT (HF) | **API is 401 (auth)** — use sitemaps + `skills_sh_hf.json` |
+| `anthropic-skills` | skill | GitHub tree API + raw SKILL.md, no auth | `api.github.com/repos/anthropics/skills/git/trees/main?recursive=1` | Anthropic repo | first-party skills; descriptions parsed from SKILL.md frontmatter (folded YAML handled); wins over skills.sh copies |
+| `models-dev` | llm | single JSON, no auth | `models.dev/api.json` | open catalog | provider→models with cost, context, reasoning/tool-call flags, open_weights |
+| `huggingface` | llm | JSON API, no auth | `huggingface.co/api/models?pipeline_tag=…&sort=downloads&limit=…` | open | top 1000 text-generation + top 300 image-text-to-text by downloads |
+| `smithery` | mcp_server | JSON API, page pagination, no auth | `registry.smithery.ai/servers?pageSize=100&page=N` | site data | public API exposes only the TOP 500 of ~11k servers (verified 30 Aug 2026: page 6 empty, totalPages=5); carries `verified` + `useCount`; unlisted/inactive skipped; no install_command (Smithery page opens instead) |
+| `awesome-claude-subagents` | agent | raw README markdown (bullet, relative links) | `raw.githubusercontent.com/VoltAgent/awesome-claude-code-subagents/main/README.md` | community | ~158 Claude Code subagents; identity keyed on agent name, not the shared repo |
 
 ## skills.sh — two-part ingestion
 - **Live (daily, in `fetch.py`):** parse `sitemap-skills-*.xml`. Skill URL = `skills.sh/{owner}/{repo}/{skill}` → name, GitHub URL, and `install_command` = `npx skills add https://github.com/{owner}/{repo} --skill {skill}`. Thin (no description).
@@ -33,8 +38,15 @@ All sources are merged into the **same** `vault.db` by `fetch.py`. Each item car
 
 Search ranks by `bm25(fts) − 0.6·score` — relevance blended with usefulness. Prune/enrich counts are logged per run in `update_history.log` (`quality:` line).
 
-## Excluded / gaps
+## Resilience (added 30 Aug 2026)
+Each source's last-good fetch is written to `snapshots/<source>.json.gz` (gitignored). A source that errors or returns 0 items falls back to its snapshot, so one flaky endpoint no longer degrades the build (the 21 Aug 2026 failure mode). Hard stops: levelup empty AND no snapshot, or new total under 60% of the existing DB (`sanity guard` in `update_history.log`).
+
+## Excluded / gaps (evaluated 30 Aug 2026)
 - `theresanaiforthat` (tools): no public API → not automated. Tools stay covered by `levelup` (~3.5k).
+- `glama.ai` (mcp_server, ~37k): API returns 401 now (needs key) → add if a key is obtained.
+- `pulsemcp.com` (mcp_server): old `v0beta` API retired (410), docs bot-blocked → revisit.
+- `mcp.so` (~20k): no public API, scrape-only, heavy overlap with official registry → skipped.
+- Hugging Face stars column stays 0 (likes/downloads live in `extra`; `stars` is GitHub-only).
 - Skills that share a name but come from **different repos** are not merged (identity is repo+skill).
 
 ## Not used: cloud routine
