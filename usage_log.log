@@ -161,3 +161,27 @@
 2026-09-03 18:19:53  GET      skill/work-iq
 2026-09-03 18:19:53  GET      skill/microsoft-sharepoint
 2026-09-03 18:19:53  GET      skill/m365-agents-py
+2026-09-04 18:58:50  SEARCH   "conditional access entra"   -> 1 results
+2026-09-04 18:58:50  SEARCH   "intune policy"   -> 0 results
+2026-09-04 18:58:50  SEARCH   "defender for office 365"   -> 0 results
+2026-09-04 18:58:50  SEARCH   "microsoft graph security"   -> 3 results
+2026-09-04 18:58:50  SEARCH   "entra id identity"   -> 2 results
+2026-09-04 18:58:50  SEARCH   "maester"   -> 0 results
+2026-09-04 18:58:50  SEARCH   "microsoft 365 security baseline"   -> 0 results
+2026-09-04 18:58:51  SEARCH   "token saving context compression"   -> 0 results
+2026-09-04 18:58:51  SEARCH   "prompt caching context reduction"   -> 0 results
+2026-09-04 18:58:51  SEARCH   "structured output extraction"   -> 5 results
+2026-09-04 19:06:10  GET      skill/implementing-conditional-access-policies-azure-ad
+2026-09-04 19:06:10  GET      skill/auditing-azure-active-directory-configuration
+2026-09-04 19:06:11  SEARCH   "zero trust device compliance"   -> 0 results
+2026-09-04 19:06:11  SEARCH   "mdm endpoint management"   -> 0 results
+2026-09-04 19:06:11  SEARCH   "email security phishing dkim dmarc"   -> 0 results
+2026-09-04 19:06:11  SEARCH   "exchange online powershell"   -> 1 results
+2026-09-04 19:06:11  SEARCH   "microsoft 365 admin"   -> 3 results
+2026-09-04 19:06:11  SEARCH   "context window management long documents"   -> 0 results
+2026-09-04 19:06:12  SEARCH   "compaction summarization handoff"   -> 0 results
+2026-09-04 19:06:12  SEARCH   "subagent orchestration token efficient"   -> 0 results
+2026-09-04 19:06:12  SEARCH   "powershell graph api microsoft"   -> 0 results
+2026-09-04 19:06:12  SEARCH   "vpn zero trust network access"   -> 1 results
+2026-09-04 19:10:03  SEARCH   "intune conditional access policy baseline"   -> 0 results
+2026-09-04 19:10:03  SEARCH   "microsoft 365 defender security baseline generator"   -> 0 results
