@@ -230,3 +230,16 @@
 2026-09-04 22:47:36  SEARCH   "subagent delegation cost"   -> 0 results
 2026-09-04 22:47:36  SEARCH   "agent handoff"   -> 5 results
 2026-09-04 22:47:36  SEARCH   "verification reviewer adversarial"   -> 0 results
+2026-09-06 19:16:59  SEARCH   "airbnb mcp server"   -> 6 results
+2026-09-06 19:16:59  SEARCH   "flight search mcp google flights"   -> 5 results
+2026-09-06 19:25:02  SEARCH   "flight search"   -> 8 results
+2026-09-06 19:25:02  SEARCH   "airbnb"   -> 8 results
+2026-09-06 19:25:02  SEARCH   "hotel booking"   -> 8 results
+2026-09-06 19:25:03  SEARCH   "google flights"   -> 8 results
+2026-09-06 19:25:03  SEARCH   "skyscanner OR kiwi"   -> 0 results
+2026-09-06 19:25:03  SEARCH   "travel planning"   -> 8 results
+2026-09-06 19:27:17  GET      mcp_server/airbnb
+2026-09-06 19:27:18  GET      skill/flight-search
+2026-09-06 19:27:18  GET      skill/google-flights
+2026-09-06 19:27:18  GET      mcp_server/kiwi-flight-search
+2026-09-06 19:27:18  GET      skill/flightclaw
