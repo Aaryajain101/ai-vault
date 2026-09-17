@@ -243,3 +243,36 @@
 2026-09-06 19:27:18  GET      skill/google-flights
 2026-09-06 19:27:18  GET      mcp_server/kiwi-flight-search
 2026-09-06 19:27:18  GET      skill/flightclaw
+2026-09-16 16:21:26  SEARCH   "Microsoft Graph"   -> 8 results
+2026-09-16 16:21:26  SEARCH   "Entra ID"   -> 8 results
+2026-09-16 16:21:26  SEARCH   "Azure AD users licenses"   -> 0 results
+2026-09-16 16:21:26  SEARCH   "Exchange Online mailbox"   -> 0 results
+2026-09-16 16:21:26  SEARCH   "Microsoft 365 licensing"   -> 0 results
+2026-09-16 16:21:26  SEARCH   "Microsoft Teams admin"   -> 1 results
+2026-09-16 16:21:26  SEARCH   "Intune devices"   -> 0 results
+2026-09-16 16:21:27  SEARCH   "Power Platform licensing"   -> 0 results
+2026-09-16 16:21:27  SEARCH   "PowerShell Microsoft 365"   -> 3 results
+2026-09-16 16:21:29  SEARCH   "token saving"   -> 5 results
+2026-09-16 16:21:29  SEARCH   "context compression"   -> 8 results
+2026-09-16 16:21:29  SEARCH   "prompt caching"   -> 8 results
+2026-09-16 16:21:29  SEARCH   "reduce token usage"   -> 7 results
+2026-09-16 16:21:29  SEARCH   "context window management"   -> 8 results
+2026-09-16 16:21:29  SEARCH   "compact conversation"   -> 1 results
+2026-09-16 16:21:29  SEARCH   "multi-agent orchestration"   -> 8 results
+2026-09-16 16:21:29  SEARCH   "subagent orchestrator delegation"   -> 1 results
+2026-09-16 16:21:29  SEARCH   "structured output json extraction"   -> 1 results
+2026-09-16 16:21:29  SEARCH   "csv data analysis join"   -> 0 results
+2026-09-16 16:24:04  GET      skill/ms365-tenant-manager
+2026-09-16 16:24:04  GET      skill/msgraph
+2026-09-16 16:24:04  GET      agent/m365-admin
+2026-09-16 16:24:04  GET      mcp_server/lokka-microsoft-graph
+2026-09-16 16:24:04  GET      mcp_server/minerva-mcp-microsoft-365-azure
+2026-09-16 16:24:05  GET      skill/token-efficiency
+2026-09-16 16:24:05  GET      skill/savethetokens
+2026-09-16 16:24:05  GET      skill/prompt-caching
+2026-09-16 16:24:05  GET      skill/context-window-management
+2026-09-16 16:24:05  GET      skill/agent-orchestration-multi-agent-optimize
+2026-09-16 16:24:05  GET      skill/structured-output-extractor
+2026-09-16 16:24:05  GET      skill/half-clone
+2026-09-16 16:24:05  GET      mcp_server/yang1bai-claw-tsaver
+2026-09-16 16:24:05  GET      skill/auditing-azure-active-directory-configuration
