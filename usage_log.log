@@ -276,3 +276,54 @@
 2026-09-16 16:24:05  GET      skill/half-clone
 2026-09-16 16:24:05  GET      mcp_server/yang1bai-claw-tsaver
 2026-09-16 16:24:05  GET      skill/auditing-azure-active-directory-configuration
+2026-09-22 13:09:03  SEARCH   "adversarial review"   -> 6 results
+2026-09-22 13:09:03  SEARCH   "document review critique"   -> 1 results
+2026-09-22 13:09:03  SEARCH   "red team review"   -> 3 results
+2026-09-22 13:09:04  SEARCH   "vendor evaluation procurement"   -> 0 results
+2026-09-22 13:09:09  SEARCH   "RFP evaluation scoring"   -> 0 results
+2026-09-22 13:09:09  SEARCH   "decision matrix weighted scoring"   -> 0 results
+2026-09-22 13:09:09  SEARCH   "excel openpyxl"   -> 4 results
+2026-09-22 13:09:09  SEARCH   "xlsx cell comments"   -> 0 results
+2026-09-22 13:09:13  SEARCH   "docx review comments tracked changes"   -> 0 results
+2026-09-22 13:09:14  SEARCH   "PDF table extraction"   -> 7 results
+2026-09-22 13:09:14  SEARCH   "evidence verification fact check"   -> 1 results
+2026-09-22 13:09:14  SEARCH   "citation verification"   -> 8 results
+2026-09-22 13:09:19  SEARCH   "multi-agent orchestration workflow"   -> 8 results
+2026-09-22 13:09:19  SEARCH   "subagent pipeline"   -> 0 results
+2026-09-22 13:09:19  SEARCH   "project plan gantt"   -> 1 results
+2026-09-22 13:09:19  SEARCH   "risk register"   -> 8 results
+2026-09-22 13:09:23  SEARCH   "HRMS"   -> 0 results
+2026-09-22 13:09:23  SEARCH   "payroll"   -> 8 results
+2026-09-22 13:09:23  SEARCH   "token saving"   -> 5 results
+2026-09-22 13:09:24  SEARCH   "context compression"   -> 8 results
+2026-09-22 13:09:29  SEARCH   "prompt caching"   -> 8 results
+2026-09-22 13:09:29  SEARCH   "token efficient"   -> 8 results
+2026-09-22 13:09:29  SEARCH   "compact output"   -> 6 results
+2026-09-22 13:09:30  SEARCH   "structured output json schema"   -> 0 results
+2026-09-22 13:09:36  SEARCH   "summarization chunking"   -> 0 results
+2026-09-22 13:09:37  SEARCH   "caveman"   -> 8 results
+2026-09-22 13:09:37  SEARCH   "weighted scoring model"   -> 1 results
+2026-09-22 13:09:37  SEARCH   "procurement decision"   -> 1 results
+2026-09-22 13:09:43  SEARCH   "LLM judge evaluation"   -> 8 results
+2026-09-22 13:09:43  SEARCH   "evidence grading"   -> 8 results
+2026-09-22 13:09:43  SEARCH   "spreadsheet annotation comments"   -> 0 results
+2026-09-22 13:09:43  SEARCH   "document comparison diff redline"   -> 0 results
+2026-09-22 13:09:52  GET      mcp_server/fable-mode
+2026-09-22 13:09:52  GET      skill/adversarial-review
+2026-09-22 13:09:52  GET      skill/deliberation-debate-red-teaming
+2026-09-22 13:09:52  GET      skill/risk-assessment
+2026-09-22 13:10:03  GET      skill/citation-verification
+2026-09-22 13:10:03  GET      skill/prioritization-sh
+2026-09-22 13:10:03  GET      skill/prompt-caching
+2026-09-22 13:10:03  GET      skill/context-compression
+2026-09-22 13:10:13  GET      skill/multi-agent-orchestration-sh
+2026-09-22 13:10:14  GET      skill/advanced-evaluation-sh4
+2026-09-22 13:10:14  GET      mcp_server/io-github-mehtaphysical13-pdf-tables-mcp
+2026-09-22 13:10:14  GET      skill/project-risk-register
+2026-09-22 13:10:24  SEARCH   "Fable"   -> 8 results
+2026-09-22 13:10:24  GET      skill/token-efficiency
+2026-09-22 13:10:24  GET      skill/workflow-creator-sh3
+2026-09-22 13:10:31  GET      skill/efficient-fable
+2026-09-22 13:10:38  SEARCH   "Teams chat export analysis"   -> 0 results
+2026-09-22 13:10:39  SEARCH   "RFP vendor response analysis"   -> 0 results
+2026-09-22 13:10:43  GET      skill/risk-register
