@@ -11,7 +11,7 @@ Merged in priority order (earlier wins on dedup): `levelup` (base, all 6 categor
 ## Usage
 
 > **Python invocation:** call scripts with the full interpreter path
-> `C:\Users\aarya\AppData\Local\Python\pythoncore-3.14-64\python.exe` - a bare `python`
+> `C:\Users\BusinessGovernanceOf\AppData\Local\Programs\Python\Python314\python.exe` - a bare `python`
 > (especially via the Bash tool) resolves to the disabled Windows Store alias and fails
 > with "Python was not found". Don't pipe stderr to null while debugging, or failures
 > look like empty results. (`python` below is shorthand for that full path.)
