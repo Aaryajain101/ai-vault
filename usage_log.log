@@ -338,3 +338,25 @@
 2026-09-24 15:08:34  SEARCH   "token"   -> 4 results
 2026-09-24 15:08:35  SEARCH   "context"   -> 4 results
 2026-09-24 16:17:56  SEARCH   "migration"   -> 2 results
+2026-09-29 17:22:31  SEARCH   "linkedin"   -> 8 results
+2026-09-29 17:22:32  SEARCH   "linkedin profile"   -> 8 results
+2026-09-29 17:22:32  SEARCH   "personal brand"   -> 8 results
+2026-09-29 17:22:32  SEARCH   "linkedin post"   -> 8 results
+2026-09-29 17:22:32  SEARCH   "recruiting employer brand"   -> 0 results
+2026-09-29 17:22:32  SEARCH   "headshot photo"   -> 0 results
+2026-09-29 17:22:32  SEARCH   "banner image"   -> 3 results
+2026-09-29 17:22:32  SEARCH   "copywriting"   -> 8 results
+2026-09-29 17:22:32  SEARCH   "ghostwriter"   -> 7 results
+2026-09-29 17:22:32  SEARCH   "social media content calendar"   -> 5 results
+2026-09-29 17:22:34  SEARCH   "token saving"   -> 3 results
+2026-09-29 17:22:34  SEARCH   "token compression"   -> 8 results
+2026-09-29 17:22:34  SEARCH   "context compression"   -> 8 results
+2026-09-29 17:22:34  SEARCH   "prompt caching"   -> 8 results
+2026-09-29 17:22:34  SEARCH   "token efficient"   -> 8 results
+2026-09-29 17:22:34  SEARCH   "caveman"   -> 8 results
+2026-09-29 17:22:34  SEARCH   "cost reduction llm"   -> 3 results
+2026-09-29 17:22:34  SEARCH   "subagent orchestration"   -> 8 results
+2026-09-29 17:27:48  GET      skill/LinkedIn Content Creator
+2026-09-29 17:27:48  GET      skill/linkedin-profile-optimizer
+2026-09-29 17:27:48  GET      skill/personal-brand
+2026-09-29 17:27:48  GET      skill/linkedin-post-formatter
