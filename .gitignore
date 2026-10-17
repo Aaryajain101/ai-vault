@@ -11,3 +11,4 @@ pull.cmd
 pull.sh
 Thumbs.db
 .DS_Store
+pull.log
