@@ -11,3 +11,5 @@ pull.cmd
 pull.sh
 Thumbs.db
 .DS_Store
+.last_pull
+vault.db.tmp

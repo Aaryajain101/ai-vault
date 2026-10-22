@@ -15,10 +15,18 @@ import os
 import sqlite3
 import subprocess
 import sys
+import time
+import urllib.request
 import webbrowser
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "vault.db")
 USAGE_PATH = os.path.join(os.path.dirname(__file__), "usage_log.log")
+# Pull mode since 22 Oct 2026: vault.db is built in the cloud (build-vault.yml) and published to
+# the rolling "latest" release; update.cmd downloads it. These drive the once-a-day check below.
+RELEASE_API = "https://api.github.com/repos/Aaryajain101/ai-vault/releases/tags/latest"
+PULL_STAMP = os.path.join(os.path.dirname(__file__), ".last_pull")
+UPDATE_CMD = os.path.join(os.path.dirname(__file__), "update.cmd")
+PULL_INTERVAL_H = 20
 CLAUDE_SETTINGS = os.path.expanduser(r"~\.claude\settings.json")
 
 
@@ -35,9 +43,46 @@ def log_usage(action, detail, result=""):
         pass
 
 
+def maybe_refresh():
+    """Once a day on first use: ask GitHub when the cloud-built vault.db in the 'latest' release
+    was last updated; if it is newer than the local file, start update.cmd detached so the
+    download (about 67 MB, a minute) runs in the background while this call uses the current
+    copy. Silent when offline. VAULT_NO_PULL=1 skips. update.cmd also writes the stamp, so a
+    search right after the 13:30 task does not ask again."""
+    if os.environ.get("VAULT_NO_PULL") or os.name != "nt" or not os.path.exists(UPDATE_CMD):
+        return
+    try:
+        if os.path.exists(PULL_STAMP) and time.time() - os.path.getmtime(PULL_STAMP) < PULL_INTERVAL_H * 3600:
+            return
+        with open(PULL_STAMP, "w", encoding="utf-8") as f:
+            f.write(datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S") + "\n")
+        req = urllib.request.Request(
+            RELEASE_API, headers={"User-Agent": "ai-vault-search/1.0", "Accept": "application/vnd.github+json"}
+        )
+        with urllib.request.urlopen(req, timeout=8) as r:
+            release = json.load(r)
+        asset = next((a for a in release.get("assets", []) if a.get("name") == "vault.db"), None)
+        if not asset:
+            return
+        remote = datetime.datetime.strptime(asset["updated_at"], "%Y-%m-%dT%H:%M:%SZ")
+        remote = remote.replace(tzinfo=datetime.timezone.utc).timestamp()
+        local = os.path.getmtime(DB_PATH) if os.path.exists(DB_PATH) else 0
+        if remote > local:
+            flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "DETACHED_PROCESS", 0)
+            subprocess.Popen(
+                ["cmd", "/c", UPDATE_CMD], creationflags=flags, close_fds=True,
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            log_usage("PULL", "newer cloud build found; update.cmd started in the background")
+            print("(AI Vault: a newer cloud build exists; vault.db is refreshing in the background, about a minute)",
+                  file=sys.stderr)
+    except Exception:
+        pass
+
+
 def get_db():
     if not os.path.exists(DB_PATH):
-        print("vault.db not found. Run: python fetch.py")
+        print("vault.db not found. Run update.cmd (downloads the cloud build) or: python fetch.py")
         sys.exit(1)
     return sqlite3.connect(DB_PATH)
 
@@ -255,6 +300,7 @@ def main():
     parser.add_argument("--min-stars", type=int, default=0, help="Only items with >= N GitHub stars")
     parser.add_argument("--sort", choices=["stars"], help="Sort by stars instead of blended relevance")
     args = parser.parse_args()
+    maybe_refresh()
 
     if args.stats:
         stats()
