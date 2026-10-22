@@ -68,7 +68,7 @@ def maybe_refresh():
         remote = remote.replace(tzinfo=datetime.timezone.utc).timestamp()
         local = os.path.getmtime(DB_PATH) if os.path.exists(DB_PATH) else 0
         if remote > local:
-            flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "DETACHED_PROCESS", 0)
+            flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)  # hidden console; DETACHED_PROCESS left PowerShell mute
             subprocess.Popen(
                 ["cmd", "/c", UPDATE_CMD], creationflags=flags, close_fds=True,
                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
